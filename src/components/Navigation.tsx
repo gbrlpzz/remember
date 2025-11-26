@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { FilterOption, SortOption } from '../types';
 
 interface NavigationProps {
-    currentFilter: FilterOption;
-    onFilterChange: (filter: FilterOption) => void;
-    onSortChange: (sort: SortOption) => void;
     onSearch: (query: string) => void;
-    onAdd: () => void;
-    onLogout: () => void;
 }
 
-export function Navigation({ currentFilter, onFilterChange, onSortChange, onSearch, onAdd, onLogout }: NavigationProps) {
+export function Navigation({ onSearch }: NavigationProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isHovering, setIsHovering] = useState(false);

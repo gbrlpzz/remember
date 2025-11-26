@@ -7,16 +7,12 @@ import { Feed } from './components/Feed';
 import { Navigation } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useQueryClient } from '@tanstack/react-query';
-import type { FilterOption, SortOption } from './types';
-
 function App() {
   const { user, isLoading, github, logout } = useAuth();
   const queryClient = useQueryClient();
   const [isStorageReady, setIsStorageReady] = useState(false);
   
   // App State
-  const [filterBy, setFilterBy] = useState<FilterOption>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('date');
   const [searchQuery, setSearchQuery] = useState('');
   
   const captureRef = useRef<{ focus: () => void, addFile: (file: File) => void, addText: (text: string) => void }>(null);
@@ -110,11 +106,6 @@ function App() {
       };
   }, []);
 
-  const handleAddClick = () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      captureRef.current?.focus();
-  };
-
   if (isLoading) {
     return (
       <div className="login-swiss">
@@ -148,14 +139,7 @@ function App() {
   return (
     <div className="container">
       <ErrorBoundary>
-        <Navigation 
-            currentFilter={filterBy}
-            onFilterChange={setFilterBy}
-            onSortChange={setSortBy}
-            onSearch={setSearchQuery}
-            onAdd={handleAddClick}
-            onLogout={logout}
-        />
+        <Navigation onSearch={setSearchQuery} />
 
         <CaptureBar
             ref={captureRef}
@@ -168,8 +152,6 @@ function App() {
         <main style={{ paddingTop: 'var(--space-md)' }}>
             <Feed 
                 storage={storage} 
-                filterBy={filterBy}
-                sortBy={sortBy}
                 searchQuery={searchQuery}
             />
         </main>

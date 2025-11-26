@@ -34,25 +34,6 @@ function getSpotifyEmbed(url: string): string | null {
     return null;
 }
 
-// Get preview image for a URL
-function getPreviewImage(url: string): string | null {
-    try {
-        const urlObj = new URL(url);
-        const hostname = urlObj.hostname;
-        
-        // YouTube thumbnail
-        const youtubeId = getYouTubeId(url);
-        if (youtubeId) {
-            return `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`;
-        }
-        
-        // Use a screenshot service for other URLs
-        // microlink.io provides free previews
-        return `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`;
-    } catch {
-        return null;
-    }
-}
 
 // Get favicon for a URL
 function getFavicon(url: string): string {
@@ -195,12 +176,6 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
         } catch (error) {
             console.error('Failed to delete item:', error);
             setIsDeleting(false);
-        }
-    };
-
-    const openLink = () => {
-        if (item.type === 'link') {
-            window.open(item.content, '_blank', 'noopener,noreferrer');
         }
     };
 
