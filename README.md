@@ -2,7 +2,7 @@
 
 **Mnemosyne.**
 
-Mnemosyne is a magical personal archive for references, memories, curiosities, and wonders. Inspired by Aby Warburg's *Mnemosyne Atlas*, it reimagines the digital pinboard as a liquid, ethereal space where connections can be discovered naturally.
+Mnemosyne is a magical personal archive for references, memories, curiosities, and wonders. Inspired by Aby Warburg's *Mnemosyne Atlas*, it reimagines the digital pinboard where connections can be discovered naturally.
 
 > **Try it live:** [mnemosyne.gbrlpzz.com](https://mnemosyne.gbrlpzz.com)
 
