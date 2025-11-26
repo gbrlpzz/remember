@@ -30,7 +30,8 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
     const actionsRef = useRef<HTMLDivElement>(null);
 
     // Generate a random rotation between -2 and 2 degrees for that "pinned" look
-    const rotation = React.useMemo(() => Math.random() * 4 - 2, []);
+    // Removed for austere minimal look
+    // const rotation = React.useMemo(() => Math.random() * 4 - 2, []);
 
     useEffect(() => {
         if (item.type === 'image' && item.image) {
@@ -140,40 +141,32 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
     return (
         <div 
             className={`grid-item card-swiss type-${item.type} ${item.archived ? 'opacity-50' : ''}`}
-            style={{ transform: `rotate(${rotation}deg)` }}
         >
-            {/* Visual Pin for Notes/Links */}
-            {item.type !== 'image' && (
-                <div className="visual-pin"></div>
-            )}
-
             {item.type === 'image' && imageUrl && (
                 <div className="card-image-container">
                     <img src={imageUrl} alt={item.content} />
                 </div>
             )}
 
-            <div style={{ padding: item.type === 'image' ? '0' : '0' }}>
-                <div className="card-meta">
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {item.pinned && <Pin size={12} fill="currentColor" className="icon-pin" />}
-                        {item.starred && <Star size={12} fill="currentColor" color="var(--color-accent)" />}
-                    </div>
-                    {/* Date moved to bottom or tooltip to clean up header? Let's keep it subtle */}
-                </div>
-
+            <div style={{ padding: item.type === 'image' ? '12px 0 0 0' : '0' }}>
+                
                 {item.type === 'link' && (
-                    <h3 className="card-title">
-                        <a href={item.content} target="_blank" rel="noopener noreferrer">
-                            {item.title || item.content} <ExternalLink size={12} style={{ verticalAlign: 'middle', opacity: 0.5 }} />
-                        </a>
-                    </h3>
+                    <div className="type-link">
+                        <h3 className="card-title">
+                            <a href={item.content} target="_blank" rel="noopener noreferrer">
+                                {item.title || item.content} <ExternalLink size={10} style={{ verticalAlign: 'middle', opacity: 0.5 }} />
+                            </a>
+                        </h3>
+                        <div style={{ fontSize: '0.8rem', color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {item.content}
+                        </div>
+                    </div>
                 )}
 
                 {item.content && item.type !== 'link' && (
                     <div className="card-content">
                         {item.type === 'image' ? (
-                            <div className="image-caption">{item.content}</div>
+                            <div className="image-caption" style={{ fontSize: '0.9rem', color: '#000' }}>{item.content}</div>
                         ) : (
                             <div className="note-content">{item.content}</div>
                         )}
@@ -181,22 +174,21 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
                 )}
 
                 {item.description && (
-                    <div className="card-description">
+                    <div className="card-description" style={{ marginTop: '12px', fontSize: '0.85rem', color: '#666' }}>
                         {item.description}
                     </div>
                 )}
 
                 <div className="card-footer">
+                    {/* Date only visible on hover via CSS */}
                     <span className="card-date">
                         {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                     </span>
-                    {item.tags && item.tags.length > 0 && (
-                        <div className="card-tags">
-                            {item.tags.map(tag => (
-                                <span key={tag} className="tag">#{tag}</span>
-                            ))}
-                        </div>
-                    )}
+                    
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {item.pinned && <Pin size={12} fill="currentColor" />}
+                        {item.starred && <Star size={12} fill="currentColor" />}
+                    </div>
                 </div>
             </div>
 
@@ -205,7 +197,7 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
                 <button onClick={togglePin} title="Pin"><Pin size={16} fill={item.pinned ? 'currentColor' : 'none'} /></button>
                 <button onClick={toggleStar} title="Star"><Star size={16} fill={item.starred ? 'currentColor' : 'none'} /></button>
                 <button onClick={toggleArchive} title="Archive"><Archive size={16} /></button>
-                <button onClick={deleteItem} title="Delete" style={{ color: 'var(--color-accent)' }}><Trash2 size={16} /></button>
+                <button onClick={deleteItem} title="Delete"><Trash2 size={16} /></button>
             </div>
         </div>
     );

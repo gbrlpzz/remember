@@ -74,18 +74,15 @@ export function Feed({ storage }: FeedProps) {
         <div>
             <div className="feed-toolbar">
                 <div className="filter-group">
-                    {['all', 'notes', 'links', 'images', 'starred', 'archived'].map(f => (
+                    {['all', 'notes', 'links', 'images', 'starred'].map(f => (
                         <button 
                             key={f}
                             className={`filter-btn ${filterBy === f ? 'active' : ''}`}
                             onClick={() => setFilterBy(f as FilterOption)}
                         >
-                            {f.toUpperCase()}
+                            {f}
                         </button>
                     ))}
-                </div>
-                <div className="text-mono" style={{ fontSize: '0.75rem' }}>
-                    {filteredItems.length} ITEMS
                 </div>
             </div>
 
@@ -102,8 +99,8 @@ export function Feed({ storage }: FeedProps) {
             </div>
             
             {filteredItems.length === 0 && (
-                <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontFamily: 'var(--font-serif)' }}>
-                    The archive is empty.
+                <div style={{ padding: '120px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem', letterSpacing: '-0.02em' }}>
+                    (empty)
                 </div>
             )}
         </div>

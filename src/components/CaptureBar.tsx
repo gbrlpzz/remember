@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import type { Item, ItemType } from '../types';
-import { Plus, X, Image as ImageIcon } from 'lucide-react';
+import { X, Image as ImageIcon } from 'lucide-react';
 
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
@@ -133,7 +133,7 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
                 <input
                     type="text"
                     className="input-swiss"
-                    placeholder="Add a memory, reference, or curiosity..."
+                    placeholder="Save a thought..."
                     value={input}
                     onChange={(e) => {
                         setInput(e.target.value);
@@ -142,7 +142,13 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
                     onFocus={() => setIsExpanded(true)}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
-                    style={{ fontSize: '1.25rem', padding: '12px 0' }}
+                    style={{ 
+                        textAlign: 'center',
+                        padding: '20px 0',
+                        fontSize: '1.2rem',
+                        letterSpacing: '-0.02em',
+                        background: 'transparent'
+                    }}
                 />
                 {droppedFile && (
                     <div style={{ 
@@ -154,10 +160,11 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
                         alignItems: 'center', 
                         gap: '8px',
                         fontSize: '0.875rem',
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border)',
-                        padding: '4px 8px',
-                        color: 'var(--color-text)'
+                        background: '#fff',
+                        border: '1px solid #eee',
+                        padding: '4px 12px',
+                        borderRadius: '999px',
+                        color: '#000'
                     }}>
                         <ImageIcon size={14} />
                         {droppedFile.name}
@@ -167,33 +174,34 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
             </div>
 
             {isExpanded && (
-                <div className="capture-expanded">
+                <div className="capture-expanded" style={{ textAlign: 'center' }}>
                     <textarea
-                        placeholder="Add context, thoughts, or details..."
+                        placeholder="Add context..."
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        rows={3}
+                        rows={1}
                         style={{ 
                             width: '100%', 
                             resize: 'none', 
                             background: 'transparent', 
-                            fontFamily: 'var(--font-serif)',
-                            fontSize: '1.1rem',
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '0.95rem',
                             border: 'none',
                             outline: 'none',
-                            color: 'var(--color-text)',
+                            color: 'var(--color-text-muted)',
+                            textAlign: 'center',
                             marginBottom: '16px'
                         }}
                     />
                     
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
                         {tags.map(tag => (
-                            <span key={tag} className="tag">
+                            <span key={tag} className="tag" style={{ background: '#f5f5f5', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
                                 #{tag}
                                 <button 
                                     onClick={() => removeTag(tag)} 
-                                    style={{ marginLeft: '4px', cursor: 'pointer' }}
+                                    style={{ marginLeft: '4px', cursor: 'pointer', opacity: 0.5 }}
                                 >×</button>
                             </span>
                         ))}
@@ -202,21 +210,22 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
                             value={tagInput}
                             onChange={(e) => setTagInput(e.target.value)}
                             onKeyDown={handleTagKeyDown}
-                            placeholder={tags.length === 0 ? "Add tags..." : "Add another..."}
+                            placeholder={tags.length === 0 ? "+ tag" : "+"}
                             className="tag-input"
                             style={{ 
-                                flex: 1, 
-                                minWidth: '80px',
+                                width: '60px',
                                 background: 'transparent',
                                 color: 'var(--color-text-muted)',
-                                borderBottom: '1px solid transparent'
+                                borderBottom: '1px solid transparent',
+                                fontSize: '0.9rem',
+                                textAlign: 'left'
                             }}
                         />
                     </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-                        <button className="btn" onClick={handleSave} disabled={isSaving}>
-                            {isSaving ? 'SAVING...' : 'SAVE ENTRY'} <Plus size={16} />
+                    
+                    <div style={{ marginTop: '24px', opacity: isSaving ? 0.5 : 1 }}>
+                         <button className="btn outline" onClick={handleSave} disabled={isSaving}>
+                            {isSaving ? 'SAVING' : 'SAVE'}
                         </button>
                     </div>
                 </div>

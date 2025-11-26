@@ -68,18 +68,10 @@ function App() {
   return (
     <div className="container">
       <header>
-        <h1>MNEMOSYNE</h1>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <small className="text-mono">{user.login}</small>
-            <img
-              src={user.avatar_url}
-              alt={user.login}
-              style={{ width: '32px', height: '32px', filter: 'grayscale(100%)' }}
-            />
-          </div>
-          <button onClick={logout} className="btn text" style={{ fontSize: '0.75rem' }}>
-            LOGOUT
+        <div style={{ fontWeight: 600, letterSpacing: '-0.04em', fontSize: '1.1rem' }}>MNEMOSYNE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button onClick={logout} className="btn text" style={{ fontSize: '0.8rem', color: '#999' }}>
+            EXIT
           </button>
         </div>
       </header>
