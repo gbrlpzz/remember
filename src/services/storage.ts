@@ -1,10 +1,12 @@
 import { GitHubService } from './github';
+import { cache } from './cache';
 import type { Item } from '../types';
 
 const REPO_NAME = 'mnemosyne-db';
 
 export class StorageService {
     private github: GitHubService;
+    private filePathMap: Map<string, string> = new Map(); // id -> filepath
 
     constructor(github: GitHubService) {
         this.github = github;
@@ -12,34 +14,74 @@ export class StorageService {
     }
 
     async init() {
-        console.log("StorageService: init started");
         const repo = await this.github.getRepo(REPO_NAME);
         if (!repo) {
-            console.log("StorageService: Repo not found, creating...");
             await this.github.createRepo(REPO_NAME);
         }
-        console.log("StorageService: init completed");
     }
 
-    async saveItem(item: Item) {
-        const path = `data/${item.createdAt}-${item.id}.json`;
+    private getFilePath(item: Item): string {
+        return `data/${item.createdAt}-${item.id}.json`;
+    }
+
+    async saveItem(item: Item): Promise<void> {
+        const path = this.getFilePath(item);
         const content = JSON.stringify(item, null, 2);
         await this.github.createFile(path, content, `Save ${item.type}: ${item.title || item.id}`);
+        
+        // Update cache
+        cache.set(item);
+        this.filePathMap.set(item.id, path);
+    }
+
+    async updateItem(item: Item): Promise<void> {
+        const path = this.filePathMap.get(item.id) || this.getFilePath(item);
+        const updatedItem = { ...item, updatedAt: new Date().toISOString() };
+        const content = JSON.stringify(updatedItem, null, 2);
+        
+        await this.github.updateFile(path, content, `Update ${item.type}: ${item.title || item.id}`);
+        
+        // Update cache
+        cache.set(updatedItem);
+    }
+
+    async deleteItem(item: Item): Promise<void> {
+        const path = this.filePathMap.get(item.id) || this.getFilePath(item);
+        await this.github.deleteFile(path, `Delete ${item.type}: ${item.title || item.id}`);
+        
+        // Remove from cache
+        cache.delete(item.id);
+        this.filePathMap.delete(item.id);
+        
+        // If it has an image, try to delete that too
+        if (item.image) {
+            try {
+                await this.github.deleteFile(item.image, `Delete asset for ${item.id}`);
+            } catch {
+                // Asset deletion is best effort
+            }
+        }
+    }
+
+    async togglePinned(item: Item): Promise<Item> {
+        const updated = { ...item, pinned: !item.pinned };
+        await this.updateItem(updated);
+        return updated;
+    }
+
+    async toggleStarred(item: Item): Promise<Item> {
+        const updated = { ...item, starred: !item.starred };
+        await this.updateItem(updated);
+        return updated;
+    }
+
+    async toggleArchived(item: Item): Promise<Item> {
+        const updated = { ...item, archived: !item.archived };
+        await this.updateItem(updated);
+        return updated;
     }
 
     async uploadAsset(file: File): Promise<string> {
-        const buffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        // We don't need btoa here because GitHubService.createFile does it, 
-        // BUT GitHubService.createFile expects a string. 
-        // Let's adjust GitHubService to handle this or just pass the binary string.
-        // Actually, let's just do the base64 conversion here to be safe and clear.
-
-        // Better approach: Read as DataURL and strip prefix
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async () => {
@@ -48,11 +90,6 @@ export class StorageService {
                 const id = Math.random().toString(36).substring(2, 15);
                 const path = `assets/${id}.${ext}`;
 
-                // We need a way to pass raw base64 to GitHubService without it double-encoding
-                // Or we update GitHubService to accept base64 flag.
-                // For now, let's assume we can modify GitHubService or use a raw put.
-
-                // Let's modify GitHubService to support direct base64 content
                 await this.github.createFile(path, base64Content, `Upload asset: ${file.name}`, true);
                 resolve(path);
             };
@@ -61,21 +98,39 @@ export class StorageService {
         });
     }
 
-    async getItems(): Promise<Item[]> {
-        const files = await this.github.listFiles('data');
-        // Sort by name (which starts with timestamp) descending
-        const sortedFiles = files
-            .filter((f: any) => f.name.endsWith('.json'))
-            .sort((a: any, b: any) => b.name.localeCompare(a.name));
+    async getItems(forceRefresh = false): Promise<Item[]> {
+        // Try cache first for instant display
+        if (!forceRefresh) {
+            const cached = cache.load();
+            if (cached && !cache.isStale()) {
+                console.log(`[Storage] Using cached items: ${cached.length}`);
+                return this.sortItems(cached);
+            }
+        }
 
-        // Fetch content for top 20 items (pagination later)
+        console.log(`[Storage] Fetching items from GitHub...`);
+        
+        // Fetch from GitHub
+        const files = await this.github.listFiles('data');
+        console.log(`[Storage] Raw files from GitHub:`, files);
+        
+        const sortedFiles = files
+            .filter((f: { name: string }) => f.name.endsWith('.json'))
+            .sort((a: { name: string }, b: { name: string }) => b.name.localeCompare(a.name));
+
+        console.log(`[Storage] JSON files to fetch: ${sortedFiles.length}`);
+
+        // Fetch all items in parallel
         const items = await Promise.all(
-            sortedFiles.slice(0, 20).map(async (file: any) => {
+            sortedFiles.map(async (file: { path: string; name: string }) => {
                 const content = await this.github.getFile(file.path);
                 if (content) {
                     try {
-                        return JSON.parse(content) as Item;
+                        const item = JSON.parse(content) as Item;
+                        this.filePathMap.set(item.id, file.path);
+                        return item;
                     } catch (e) {
+                        console.error(`[Storage] Failed to parse ${file.path}:`, e);
                         return null;
                     }
                 }
@@ -83,10 +138,49 @@ export class StorageService {
             })
         );
 
-        return items.filter((i): i is Item => i !== null);
+        const validItems = items.filter((i): i is Item => i !== null);
+        console.log(`[Storage] Valid items loaded: ${validItems.length}`);
+        
+        // Update cache
+        if (validItems.length > 0) {
+            cache.save(validItems);
+        }
+
+        return this.sortItems(validItems);
+    }
+
+    private sortItems(items: Item[]): Item[] {
+        return [...items].sort((a, b) => {
+            // Pinned items first
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            // Then by date
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
     }
 
     async getAsset(path: string): Promise<string | null> {
         return await this.github.getFileRaw(path);
+    }
+
+    // Optimistic update helpers
+    optimisticUpdate(item: Item): void {
+        cache.set(item);
+    }
+
+    optimisticDelete(id: string): void {
+        cache.delete(id);
+    }
+
+    getCachedItems(): Item[] {
+        // Try to load from localStorage first if memory cache is empty
+        const memoryItems = cache.getAll();
+        if (memoryItems.length === 0) {
+            const loaded = cache.load();
+            if (loaded && loaded.length > 0) {
+                return this.sortItems(loaded);
+            }
+        }
+        return this.sortItems(memoryItems);
     }
 }

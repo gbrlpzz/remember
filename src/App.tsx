@@ -25,9 +25,10 @@ function App() {
           setInitError(null);
           await storage.init();
           setIsStorageReady(true);
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error("Failed to init storage", e);
-          setInitError(e.message || "Failed to initialize storage. Check console for details.");
+          const message = e instanceof Error ? e.message : "Failed to initialize storage";
+          setInitError(message);
         }
       }
     };
@@ -35,7 +36,11 @@ function App() {
   }, [storage]);
 
   if (isLoading) {
-    return <div className="container flex items-center justify-center" style={{ height: '100vh' }}>Loading...</div>;
+    return (
+      <div className="login-swiss">
+        <div className="text-mono">LOADING...</div>
+      </div>
+    );
   }
 
   if (!user || !storage) {
@@ -44,16 +49,15 @@ function App() {
 
   if (!isStorageReady) {
     return (
-      <div className="container flex items-center justify-center" style={{ height: '100vh', flexDirection: 'column', gap: '1rem' }}>
-        <p>Initializing your mind...</p>
+      <div className="login-swiss">
+        <div className="text-mono">
+          {initError ? 'CONNECTION FAILED' : 'INITIALIZING...'}
+        </div>
         {initError && (
-          <div style={{ color: 'red', maxWidth: '400px', textAlign: 'center' }}>
-            <p>Error: {initError}</p>
-            <button
-              onClick={logout}
-              style={{ marginTop: '1rem', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              Try logging out and back in
+          <div style={{ marginTop: '2rem' }}>
+            <p style={{ color: 'red', marginBottom: '1rem' }}>{initError}</p>
+            <button onClick={logout} className="btn outline">
+              RETRY LOGIN
             </button>
           </div>
         )}
@@ -62,26 +66,25 @@ function App() {
   }
 
   return (
-    <div className="container" style={{ padding: '2rem 0' }}>
-      <header className="flex justify-between items-center" style={{ marginBottom: '4rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Mnemosyne</h1>
-        <div className="flex items-center" style={{ gap: '1rem' }}>
-          <img
-            src={user.avatar_url}
-            alt={user.login}
-            style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-          />
-          <button
-            onClick={logout}
-            className="text-gray text-sm"
-            style={{ border: 'none', background: 'none', textDecoration: 'underline' }}
-          >
-            Logout
+    <div className="container">
+      <header>
+        <h1>MNEMOSYNE</h1>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <small className="text-mono">{user.login}</small>
+            <img
+              src={user.avatar_url}
+              alt={user.login}
+              style={{ width: '32px', height: '32px', filter: 'grayscale(100%)' }}
+            />
+          </div>
+          <button onClick={logout} className="btn text" style={{ fontSize: '0.75rem' }}>
+            LOGOUT
           </button>
         </div>
       </header>
 
-      <main style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <main>
         <CaptureBar
           storage={storage}
           onSave={() => {
@@ -89,9 +92,7 @@ function App() {
           }}
         />
 
-        <div style={{ marginTop: '4rem' }}>
-          <Feed storage={storage} />
-        </div>
+        <Feed storage={storage} />
       </main>
     </div>
   );
