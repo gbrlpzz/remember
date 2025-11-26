@@ -272,20 +272,22 @@ h1, h2, h3 {
 /* Card - Swiss Proportions */
 .grid-item {
   break-inside: avoid;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
   position: relative;
   background: var(--color-card);
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02);
-  transition: all 0.3s var(--ease-spring);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   cursor: pointer;
   overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.02);
 }
 
 .grid-item:hover {
-  box-shadow: 0 8px 24px -4px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  transform: translateY(-4px) scale(1.005);
   z-index: 10;
+  border-color: rgba(0,0,0,0.04);
 }
 
 
@@ -302,12 +304,12 @@ h1, h2, h3 {
 
 /* Notes */
 .type-note {
-  padding: 16px;
+  padding: 24px;
 }
 
 .note-content {
-  font-size: 1rem;
-  line-height: 1.55;
+  font-size: 1.05rem;
+  line-height: 1.6;
   font-weight: 400;
   letter-spacing: -0.01em;
   white-space: pre-wrap;
@@ -363,7 +365,7 @@ h1, h2, h3 {
 }
 
 .link-preview-content {
-  padding: 14px 16px 16px;
+  padding: 20px 24px 24px;
   background: var(--color-card);
 }
 

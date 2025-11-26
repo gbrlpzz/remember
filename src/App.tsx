@@ -7,6 +7,8 @@ import { Feed } from './components/Feed';
 import { Navigation } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useQueryClient } from '@tanstack/react-query';
+import { Analytics } from "@vercel/analytics/react"
+
 function App() {
   const { user, isLoading, github, logout } = useAuth();
   const queryClient = useQueryClient();
@@ -138,6 +140,7 @@ function App() {
 
   return (
     <div className="container">
+      <Analytics />
       <ErrorBoundary>
         <Navigation onSearch={setSearchQuery} />
 
