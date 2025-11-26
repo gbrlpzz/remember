@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import type { Item, ItemType } from '../types';
-import { X, Image as ImageIcon } from 'lucide-react';
 
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
@@ -166,9 +165,11 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
                         borderRadius: '999px',
                         color: '#000'
                     }}>
-                        <ImageIcon size={14} />
+                        <div className="magic-cue cue-frame" style={{ width: '12px', height: '12px' }} />
                         {droppedFile.name}
-                        <button onClick={() => setDroppedFile(null)}><X size={14} /></button>
+                        <button onClick={() => setDroppedFile(null)}>
+                            <div className="magic-cue cue-x" style={{ width: '8px', height: '8px' }} />
+                        </button>
                     </div>
                 )}
             </div>
@@ -202,7 +203,9 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
                                 <button 
                                     onClick={() => removeTag(tag)} 
                                     style={{ marginLeft: '4px', cursor: 'pointer', opacity: 0.5 }}
-                                >×</button>
+                                >
+                                    <div className="magic-cue cue-x" style={{ width: '6px', height: '6px' }} />
+                                </button>
                             </span>
                         ))}
                         <input

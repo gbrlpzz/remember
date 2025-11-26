@@ -16,5 +16,5 @@ export interface Item {
     archived?: boolean;
 }
 
-export type SortOption = 'newest' | 'oldest' | 'starred' | 'type';
+export type SortOption = 'date' | 'oldest' | 'starred' | 'type';
 export type FilterOption = 'all' | 'notes' | 'links' | 'images' | 'starred' | 'archived';

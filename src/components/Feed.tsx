@@ -6,12 +6,15 @@ import type { Item, SortOption, FilterOption } from '../types';
 
 interface FeedProps {
     storage: StorageService;
+    filterBy?: FilterOption;
+    sortBy?: SortOption;
+    searchQuery?: string;
 }
 
-export function Feed({ storage }: FeedProps) {
+export function Feed({ storage, filterBy = 'all', sortBy = 'date', searchQuery = '' }: FeedProps) {
     const queryClient = useQueryClient();
-    const [filterBy, setFilterBy] = useState<FilterOption>('all');
-    // Tag filtering can be added later as a specific feature, for now standard filters
+    // Local filter state removed in favor of props
+    // const [filterBy, setFilterBy] = useState<FilterOption>('all');
 
     const { data: items, isLoading, error, isFetching } = useQuery({
         queryKey: ['items'],
@@ -28,6 +31,17 @@ export function Feed({ storage }: FeedProps) {
         if (!items) return [];
         let result = [...items];
 
+        // Search (simple implementation)
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(i => 
+                (i.content && i.content.toLowerCase().includes(query)) ||
+                (i.title && i.title.toLowerCase().includes(query)) ||
+                (i.description && i.description.toLowerCase().includes(query)) ||
+                (i.tags && i.tags.some(t => t.toLowerCase().includes(query)))
+            );
+        }
+
         // Filter
         switch (filterBy) {
             case 'notes': result = result.filter(i => i.type === 'note'); break;
@@ -38,15 +52,27 @@ export function Feed({ storage }: FeedProps) {
             default: result = result.filter(i => !i.archived);
         }
 
-        // Always sort by pinned then date (Swiss design prefers structure over user choice sometimes)
+        // Sort
         result.sort((a, b) => {
+            // Pinned always first
             if (a.pinned && !b.pinned) return -1;
             if (!a.pinned && b.pinned) return 1;
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+
+            // Then by sort option
+            if (sortBy === 'date') {
+                return dateB - dateA; // Newest first
+            } else if (sortBy === 'oldest') {
+                return dateA - dateB;
+            }
+            // Random or other sorts can be added here
+            return 0;
         });
 
         return result;
-    }, [items, filterBy]);
+    }, [items, filterBy, sortBy, searchQuery]);
 
     const handleUpdate = (updatedItem: Item) => {
         queryClient.setQueryData<Item[]>(['items'], (old) => {
@@ -63,7 +89,7 @@ export function Feed({ storage }: FeedProps) {
     };
 
     if (isLoading || (isFetching && !items?.length)) {
-        return <div className="text-mono" style={{ padding: '40px 0', opacity: 0.5 }}>LOADING DATA...</div>;
+        return <div className="text-mono" style={{ padding: '40px 0', opacity: 0.5, textAlign: 'center' }}>...</div>;
     }
 
     if (error) {
@@ -72,19 +98,7 @@ export function Feed({ storage }: FeedProps) {
 
     return (
         <div>
-            <div className="feed-toolbar">
-                <div className="filter-group">
-                    {['all', 'notes', 'links', 'images', 'starred'].map(f => (
-                        <button 
-                            key={f}
-                            className={`filter-btn ${filterBy === f ? 'active' : ''}`}
-                            onClick={() => setFilterBy(f as FilterOption)}
-                        >
-                            {f}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            {/* Filters now controlled by Navigation Sidebar */}
 
             <div className="grid-swiss">
                 {filteredItems.map((item) => (
@@ -99,8 +113,8 @@ export function Feed({ storage }: FeedProps) {
             </div>
             
             {filteredItems.length === 0 && (
-                <div style={{ padding: '120px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem', letterSpacing: '-0.02em' }}>
-                    (empty)
+                <div style={{ padding: '20vh 0', textAlign: 'center', color: '#eee', fontSize: '2rem', letterSpacing: '-0.05em', fontWeight: 300 }}>
+                    void
                 </div>
             )}
         </div>

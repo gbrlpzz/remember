@@ -71,16 +71,25 @@ h1 {
 }
 
 header {
+  /* Hidden by default, visible on hover area */
   padding: var(--space-md) 0;
   margin-bottom: var(--space-lg);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
+  position: fixed;
   top: 0;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(10px);
+  left: var(--space-md);
+  right: var(--space-md);
   z-index: 100;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none; /* Let clicks pass through when hidden */
+}
+
+header:hover, body:has(header:hover) header {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Components */
@@ -105,12 +114,21 @@ header {
   border-radius: 999px;
 }
 
-/* Capture Bar - Minimal Input */
+/* Capture Bar - Ghost Input */
 .capture-area {
   max-width: 600px;
-  margin: 0 auto var(--space-xl);
+  margin: 80px auto var(--space-xl); /* Add top margin since header is fixed/hidden */
   position: relative;
+  opacity: 0; /* Fully invisible unless active */
+  transition: opacity 0.3s ease;
 }
+
+.capture-area:focus-within {
+  opacity: 1;
+}
+
+/* Show hint on hover if needed, but user asked for "invisible" */
+/* .capture-area:hover { opacity: 0.5; } */
 
 .input-swiss {
   width: 100%;
@@ -118,6 +136,7 @@ header {
   padding: var(--space-sm) 0;
   border-bottom: 1px solid transparent;
   transition: border-color 0.2s;
+  text-align: center;
 }
 
 .input-swiss:focus {
@@ -125,6 +144,11 @@ header {
 }
 
 .input-swiss::placeholder {
+  color: transparent; /* Truly invisible until focused/typing */
+  transition: color 0.2s;
+}
+
+.capture-area:focus-within .input-swiss::placeholder {
   color: #e5e5e5;
 }
 
@@ -152,20 +176,17 @@ header {
   position: relative;
   background: transparent;
   transition: opacity 0.2s;
+  cursor: pointer;
 }
 
-.grid-item:hover .card-actions-hover {
-  opacity: 1;
-}
-
-/* Card Types */
+/* Card Types - Invisible Containers */
 
 /* Images - Full Bleed */
 .card-image-container img {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 0; /* Sharp edges */
+  border-radius: 0; 
   transition: filter 0.2s;
 }
 
@@ -173,41 +194,53 @@ header {
   filter: brightness(0.95);
 }
 
-/* Notes - Big Type */
+/* Notes - Just Text */
 .type-note {
-  padding: var(--space-md);
-  background: #f9f9f9;
+  padding: var(--space-md) 0;
+  /* No background */
 }
 
 .note-content {
-  font-size: 1.25rem;
-  line-height: 1.4;
+  font-size: 1.5rem; 
+  line-height: 1.3;
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   white-space: pre-wrap;
+  color: #000;
 }
 
-/* Links */
+/* Links - Minimal */
 .type-link {
-  border: 1px solid var(--color-border);
-  padding: var(--space-md);
-  transition: border-color 0.2s;
-}
-
-.type-link:hover {
-  border-color: #000;
+  padding: var(--space-md) 0;
+  /* No border */
 }
 
 .type-link a {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 500;
   display: block;
   margin-bottom: 4px;
+  text-decoration: none; /* Clean */
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
 }
 
-/* Card Meta/Internals */
-.card-meta {
-  display: none; /* Hide meta by default for minimal look */
+.type-link:hover a {
+  border-bottom-color: #000;
+}
+
+/* Card Meta/Internals - HIDDEN */
+.card-meta, .card-footer, .card-actions-hover, .card-description {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.grid-item:hover .card-footer,
+.grid-item:hover .card-actions-hover,
+.grid-item:hover .card-description {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .card-footer {
@@ -217,12 +250,6 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.grid-item:hover .card-footer {
-  opacity: 1;
 }
 
 .card-tags {
@@ -240,20 +267,15 @@ header {
   opacity: 0.5;
 }
 
-/* Actions Overlay */
+/* Actions Overlay - Minimal Dots */
 .card-actions-hover {
   position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  background: rgba(255,255,255,0.9);
-  padding: 6px;
-  border-radius: 999px;
+  top: 0;
+  right: 0;
+  background: #fff;
+  padding: 4px;
   display: flex;
   gap: 8px;
-  opacity: 0;
-  transition: opacity 0.2s;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 /* Login */
@@ -275,7 +297,7 @@ header {
 .drag-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.95);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -298,35 +320,139 @@ header {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 0px; background: transparent; }
 
-/* Feed Filters */
-.feed-toolbar {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
-  position: sticky;
-  top: 80px; /* Below header */
-  z-index: 90;
-  pointer-events: none; /* Let clicks pass through empty space */
+/* Nav Trigger - Pill */
+.nav-trigger {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background: #000;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 900;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
-.filter-group {
-  background: rgba(255,255,255,0.8);
-  backdrop-filter: blur(10px);
-  padding: 8px 16px;
+.nav-trigger.expanded {
+  width: 600px; /* Expanded width */
+  height: 60px;
   border-radius: 999px;
-  border: 1px solid var(--color-border);
-  pointer-events: auto;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
   display: flex;
-  gap: 16px;
+  align-items: center;
+  padding: 0 24px;
 }
 
-.filter-btn {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  font-weight: 500;
+.nav-search-pill {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: #000;
+  outline: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
 }
 
-.filter-btn.active {
-  color: var(--color-text);
+.nav-trigger.expanded .nav-search-pill {
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0.2s;
 }
+
+.pill-close {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+}
+
+.nav-trigger.expanded .pill-close {
+  opacity: 0.5;
+  pointer-events: auto;
+  transition: opacity 0.2s 0.2s;
+}
+
+.pill-close:hover {
+  opacity: 1;
+}
+
+/* Magic Cues */
+.magic-cue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: currentColor;
+}
+
+/* Cue: X (Close) */
+.cue-x {
+  width: 12px;
+  height: 12px;
+  position: relative;
+  transform: rotate(0deg);
+  transition: transform 0.3s ease;
+}
+.cue-x::before, .cue-x::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; height: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+.cue-x::after { transform: translate(-50%, -50%) rotate(90deg); }
+.pill-close:hover .cue-x { transform: rotate(90deg); }
+
+/* Cue: Frame (Images) */
+.cue-frame {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid currentColor;
+  opacity: 0.7;
+  transition: transform 0.3s ease;
+}
+
+/* Cue: Connect (Links) */
+.cue-connect {
+  width: 16px;
+  height: 16px;
+  position: relative;
+}
+.cue-connect span {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; height: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* Mini Cues for Actions */
+.mini-cue {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  opacity: 0.4;
+}
+.mini-cue:hover {
+  opacity: 1;
+  background: currentColor;
+  transform: scale(1.2);
+}
+
+.mini-cue-delete:hover { border-color: red; background: red; }

@@ -1,15 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { StorageService } from './services/storage';
 import { CaptureBar } from './components/CaptureBar';
 import { Feed } from './components/Feed';
+import { Navigation } from './components/Navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import type { FilterOption, SortOption } from './types';
 
 function App() {
   const { user, isLoading, github, logout } = useAuth();
   const queryClient = useQueryClient();
   const [isStorageReady, setIsStorageReady] = useState(false);
+  
+  // App State
+  const [filterBy, setFilterBy] = useState<FilterOption>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+
+  // Reference to trigger capture expansion from nav
+  const captureInputRef = useRef<HTMLInputElement>(null);
 
   const storage = useMemo(() => {
     if (github) return new StorageService(github);
@@ -34,6 +45,18 @@ function App() {
     };
     initStorage();
   }, [storage]);
+
+  const handleAddClick = () => {
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // In a real implementation, we might want to pass a prop to CaptureBar to auto-focus
+      // For now, focusing via ref or state is tricky without lifting state up further or using context
+      // But CaptureBar is right there.
+      const input = document.querySelector('.capture-area input') as HTMLInputElement;
+      if (input) {
+          input.focus();
+      }
+  };
 
   if (isLoading) {
     return (
@@ -67,16 +90,16 @@ function App() {
 
   return (
     <div className="container">
-      <header>
-        <div style={{ fontWeight: 600, letterSpacing: '-0.04em', fontSize: '1.1rem' }}>MNEMOSYNE</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={logout} className="btn text" style={{ fontSize: '0.8rem', color: '#999' }}>
-            EXIT
-          </button>
-        </div>
-      </header>
+      <Navigation 
+        currentFilter={filterBy}
+        onFilterChange={setFilterBy}
+        onSortChange={setSortBy}
+        onSearch={setSearchQuery}
+        onAdd={handleAddClick}
+        onLogout={logout}
+      />
 
-      <main>
+      <main style={{ paddingLeft: '60px' }}>
         <CaptureBar
           storage={storage}
           onSave={() => {
@@ -84,7 +107,12 @@ function App() {
           }}
         />
 
-        <Feed storage={storage} />
+        <Feed 
+            storage={storage} 
+            filterBy={filterBy}
+            sortBy={sortBy}
+            searchQuery={searchQuery}
+        />
       </main>
     </div>
   );
