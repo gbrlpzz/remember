@@ -6,12 +6,6 @@ Mnemosyne is a magical personal archive for references, memories, curiosities, a
 
 > **Try it live:** [mnemosyne.gbrlpzz.com](https://mnemosyne.gbrlpzz.com)
 
-## 🔮 The Ethos
-
-- **Invisible Interface**: UI elements fade away, leaving only your content floating in a liquid glass expanse.
-- **Magical Interactions**: Hover to reveal, double-click to edit. No clutter, just focus.
-- **Private by Design**: Your data lives in *your* GitHub repository. Mnemosyne is just a lens.
-
 ## ✨ Features
 
 - **Universal Capture**: 
