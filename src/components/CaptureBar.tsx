@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { StorageService } from '../services/storage';
 import type { Item, ItemType } from '../types';
 
@@ -9,26 +9,66 @@ interface CaptureBarProps {
     onSave: () => void;
 }
 
-export function CaptureBar({ storage, onSave }: CaptureBarProps) {
+export const CaptureBar = forwardRef<{ focus: () => void, addFile: (file: File) => void, addText: (text: string) => void }, CaptureBarProps>(({ storage, onSave }, ref) => {
     const [input, setInput] = useState('');
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState<string[]>([]);
     const [tagInput, setTagInput] = useState('');
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [isDragOver, setIsDragOver] = useState(false);
     const [droppedFile, setDroppedFile] = useState<File | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node) && !input && !description && !droppedFile) {
-                setIsExpanded(false);
-            }
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 100);
+        },
+        addFile: (file: File) => {
+            setDroppedFile(file);
+            // Create preview URL
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 100);
+        },
+        addText: (text: string) => {
+            setInput(text);
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 100);
         }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [input, description, droppedFile]);
+    }));
+
+    // Cleanup preview URL
+    useEffect(() => {
+        return () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
+
+    // Close on Escape
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                handleClose();
+            }
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [isOpen]);
+
+    const handleClose = () => {
+        setIsOpen(false);
+        setInput('');
+        setDescription('');
+        setTags([]);
+        setTagInput('');
+        setDroppedFile(null);
+        setPreviewUrl(null);
+    };
 
     const handleTagKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && tagInput.trim()) {
@@ -58,10 +98,6 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
             if (droppedFile) {
                 type = 'image';
                 imagePath = await storage.uploadAsset(droppedFile);
-                // If we have a dropped file, the input becomes the title/caption if provided, 
-                // or we use the filename if empty. 
-                // Actually, let's keep the logic clean: content is the main text. 
-                // For images, content is the caption/alt text.
                 if (!content) content = droppedFile.name;
             } else if (/^(http|https):\/\/[^ "]+$/.test(content)) {
                 type = 'link';
@@ -71,7 +107,7 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
                 id: generateId(),
                 type,
                 content,
-                title: type === 'link' ? content : undefined, // Can be edited later
+                title: type === 'link' ? content : undefined,
                 description: description.trim() || undefined,
                 image: imagePath,
                 createdAt: new Date().toISOString(),
@@ -85,30 +121,13 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
             // Actual save
             await storage.saveItem(item);
             
-            // Reset
-            setInput('');
-            setDescription('');
-            setTags([]);
-            setDroppedFile(null);
-            setIsExpanded(false);
+            // Reset and close
+            handleClose();
         } catch (error) {
             console.error("Failed to save", error);
             alert("Failed to save item");
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragOver(false);
-
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const file = e.dataTransfer.files[0];
-            if (file.type.startsWith('image/')) {
-                setDroppedFile(file);
-                setIsExpanded(true);
-            }
         }
     };
 
@@ -118,121 +137,88 @@ export function CaptureBar({ storage, onSave }: CaptureBarProps) {
         }
     };
 
+    if (!isOpen) return null;
+
     return (
-        <div 
-            ref={containerRef}
-            className={`capture-area ${isExpanded ? 'expanded' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={handleDrop}
-        >
-            {isDragOver && <div className="drag-overlay">DROP IMAGE</div>}
+        <>
+            {/* Backdrop */}
+            <div 
+                className="capture-backdrop"
+                onClick={handleClose}
+            />
             
-            <div style={{ position: 'relative' }}>
+            {/* Capture Overlay */}
+            <div className="capture-overlay">
                 <input
+                    ref={inputRef}
                     type="text"
-                    className="input-swiss"
-                    placeholder="Save a thought..."
+                    className="capture-input"
+                    placeholder="What's on your mind?"
                     value={input}
-                    onChange={(e) => {
-                        setInput(e.target.value);
-                        if (e.target.value) setIsExpanded(true);
-                    }}
-                    onFocus={() => setIsExpanded(true)}
+                    onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
-                    style={{ 
-                        textAlign: 'center',
-                        padding: '20px 0',
-                        fontSize: '1.2rem',
-                        letterSpacing: '-0.02em',
-                        background: 'transparent'
-                    }}
                 />
+
+                <textarea
+                    placeholder="Add a note..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    rows={2}
+                    className="capture-description"
+                />
+
                 {droppedFile && (
-                    <div style={{ 
-                        position: 'absolute', 
-                        right: 0, 
-                        top: '50%', 
-                        transform: 'translateY(-50%)',
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px',
-                        fontSize: '0.875rem',
-                        background: '#fff',
-                        border: '1px solid #eee',
-                        padding: '4px 12px',
-                        borderRadius: '999px',
-                        color: '#000'
-                    }}>
-                        <div className="magic-cue cue-frame" style={{ width: '12px', height: '12px' }} />
-                        {droppedFile.name}
-                        <button onClick={() => setDroppedFile(null)}>
+                    <div className="capture-file-badge">
+                        {previewUrl && (
+                            <img 
+                                src={previewUrl} 
+                                alt="Preview" 
+                                style={{ 
+                                    width: '32px', 
+                                    height: '32px', 
+                                    objectFit: 'cover', 
+                                    borderRadius: '4px' 
+                                }} 
+                            />
+                        )}
+                        <div className="magic-cue cue-frame" style={{ width: '10px', height: '10px' }} />
+                        <span>{droppedFile.name}</span>
+                        <button onClick={() => { setDroppedFile(null); setPreviewUrl(null); }} style={{ opacity: 0.5 }}>
                             <div className="magic-cue cue-x" style={{ width: '8px', height: '8px' }} />
                         </button>
                     </div>
                 )}
-            </div>
-
-            {isExpanded && (
-                <div className="capture-expanded" style={{ textAlign: 'center' }}>
-                    <textarea
-                        placeholder="Add context..."
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        rows={1}
-                        style={{ 
-                            width: '100%', 
-                            resize: 'none', 
-                            background: 'transparent', 
-                            fontFamily: 'var(--font-sans)',
-                            fontSize: '0.95rem',
-                            border: 'none',
-                            outline: 'none',
-                            color: 'var(--color-text-muted)',
-                            textAlign: 'center',
-                            marginBottom: '16px'
-                        }}
+                
+                <div className="capture-tags">
+                    {tags.map(tag => (
+                        <span key={tag} className="capture-tag">
+                            #{tag}
+                            <button onClick={() => removeTag(tag)}>
+                                <div className="magic-cue cue-x" style={{ width: '5px', height: '5px' }} />
+                            </button>
+                        </span>
+                    ))}
+                    <input
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={handleTagKeyDown}
+                        placeholder={tags.length === 0 ? "Add tags..." : "+"}
+                        className="capture-tag-input"
                     />
-                    
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
-                        {tags.map(tag => (
-                            <span key={tag} className="tag" style={{ background: '#f5f5f5', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
-                                #{tag}
-                                <button 
-                                    onClick={() => removeTag(tag)} 
-                                    style={{ marginLeft: '4px', cursor: 'pointer', opacity: 0.5 }}
-                                >
-                                    <div className="magic-cue cue-x" style={{ width: '6px', height: '6px' }} />
-                                </button>
-                            </span>
-                        ))}
-                        <input
-                            type="text"
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={handleTagKeyDown}
-                            placeholder={tags.length === 0 ? "+ tag" : "+"}
-                            className="tag-input"
-                            style={{ 
-                                width: '60px',
-                                background: 'transparent',
-                                color: 'var(--color-text-muted)',
-                                borderBottom: '1px solid transparent',
-                                fontSize: '0.9rem',
-                                textAlign: 'left'
-                            }}
-                        />
-                    </div>
-                    
-                    <div style={{ marginTop: '24px', opacity: isSaving ? 0.5 : 1 }}>
-                         <button className="btn outline" onClick={handleSave} disabled={isSaving}>
-                            {isSaving ? 'SAVING' : 'SAVE'}
-                        </button>
-                    </div>
                 </div>
-            )}
-        </div>
+                
+                <div className="capture-actions">
+                    <button className="btn text" onClick={handleClose}>
+                        Cancel
+                    </button>
+                    <button className="btn outline" onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? 'Saving...' : 'Save'}
+                    </button>
+                </div>
+            </div>
+        </>
     );
-}
+});

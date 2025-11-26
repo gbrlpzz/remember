@@ -31,15 +31,38 @@ export function Feed({ storage, filterBy = 'all', sortBy = 'date', searchQuery =
         if (!items) return [];
         let result = [...items];
 
-        // Search (simple implementation)
+        // Search (with type keyword support)
         if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase();
-            result = result.filter(i => 
-                (i.content && i.content.toLowerCase().includes(query)) ||
-                (i.title && i.title.toLowerCase().includes(query)) ||
-                (i.description && i.description.toLowerCase().includes(query)) ||
-                (i.tags && i.tags.some(t => t.toLowerCase().includes(query)))
-            );
+            const query = searchQuery.toLowerCase().trim();
+            
+            // Check for type keywords
+            const typeKeywords: Record<string, string> = {
+                'image': 'image',
+                'images': 'image',
+                'photo': 'image',
+                'photos': 'image',
+                'note': 'note',
+                'notes': 'note',
+                'text': 'note',
+                'link': 'link',
+                'links': 'link',
+                'url': 'link',
+                'urls': 'link',
+            };
+            
+            // Check if query is a type keyword
+            if (typeKeywords[query]) {
+                result = result.filter(i => i.type === typeKeywords[query]);
+            } else {
+                // Regular search across content, title, description, tags, and type
+                result = result.filter(i => 
+                    (i.content && i.content.toLowerCase().includes(query)) ||
+                    (i.title && i.title.toLowerCase().includes(query)) ||
+                    (i.description && i.description.toLowerCase().includes(query)) ||
+                    (i.tags && i.tags.some(t => t.toLowerCase().includes(query))) ||
+                    (i.type && i.type.toLowerCase().includes(query))
+                );
+            }
         }
 
         // Filter
@@ -113,8 +136,8 @@ export function Feed({ storage, filterBy = 'all', sortBy = 'date', searchQuery =
             </div>
             
             {filteredItems.length === 0 && (
-                <div style={{ padding: '20vh 0', textAlign: 'center', color: '#eee', fontSize: '2rem', letterSpacing: '-0.05em', fontWeight: 300 }}>
-                    void
+                <div className="empty-state">
+                    Double-click anywhere to add something
                 </div>
             )}
         </div>

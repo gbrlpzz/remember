@@ -5,6 +5,7 @@ import { StorageService } from './services/storage';
 import { CaptureBar } from './components/CaptureBar';
 import { Feed } from './components/Feed';
 import { Navigation } from './components/Navigation';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useQueryClient } from '@tanstack/react-query';
 import type { FilterOption, SortOption } from './types';
 
@@ -17,10 +18,8 @@ function App() {
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCaptureOpen, setIsCaptureOpen] = useState(false);
-
-  // Reference to trigger capture expansion from nav
-  const captureInputRef = useRef<HTMLInputElement>(null);
+  
+  const captureRef = useRef<{ focus: () => void, addFile: (file: File) => void, addText: (text: string) => void }>(null);
 
   const storage = useMemo(() => {
     if (github) return new StorageService(github);
@@ -46,16 +45,70 @@ function App() {
     initStorage();
   }, [storage]);
 
+  // Global Event Handlers
+  useEffect(() => {
+      const handleGlobalDrop = (e: DragEvent) => {
+          e.preventDefault();
+          if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+              const file = e.dataTransfer.files[0];
+              if (file.type.startsWith('image/')) {
+                  captureRef.current?.addFile(file);
+              }
+          }
+      };
+
+      const handleGlobalDragOver = (e: DragEvent) => {
+          e.preventDefault();
+      };
+
+      const handleGlobalDoubleClick = (e: MouseEvent) => {
+          // Ignore double clicks on interactive elements
+          if ((e.target as HTMLElement).closest('button, input, textarea, a, .grid-item')) return;
+          captureRef.current?.focus();
+      };
+
+      const handleGlobalPaste = (e: ClipboardEvent) => {
+          // Ignore paste in input fields
+          if ((e.target as HTMLElement).closest('input, textarea')) return;
+          
+          const text = e.clipboardData?.getData('text');
+          if (text && text.trim()) {
+              e.preventDefault();
+              captureRef.current?.addText(text.trim());
+          }
+          
+          // Also handle pasted images
+          const items = e.clipboardData?.items;
+          if (items) {
+              for (const item of items) {
+                  if (item.type.startsWith('image/')) {
+                      const file = item.getAsFile();
+                      if (file) {
+                          e.preventDefault();
+                          captureRef.current?.addFile(file);
+                          break;
+                      }
+                  }
+              }
+          }
+      };
+
+      window.addEventListener('drop', handleGlobalDrop);
+      window.addEventListener('dragover', handleGlobalDragOver);
+      window.addEventListener('dblclick', handleGlobalDoubleClick);
+      window.addEventListener('paste', handleGlobalPaste);
+
+      return () => {
+          window.removeEventListener('drop', handleGlobalDrop);
+          window.removeEventListener('dragover', handleGlobalDragOver);
+          window.removeEventListener('dblclick', handleGlobalDoubleClick);
+          window.removeEventListener('paste', handleGlobalPaste);
+      };
+  }, []);
+
   const handleAddClick = () => {
-      // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      // In a real implementation, we might want to pass a prop to CaptureBar to auto-focus
-      // For now, focusing via ref or state is tricky without lifting state up further or using context
-      // But CaptureBar is right there.
-      const input = document.querySelector('.capture-area input') as HTMLInputElement;
-      if (input) {
-          input.focus();
-      }
+      captureRef.current?.focus();
   };
 
   if (isLoading) {
@@ -90,30 +143,33 @@ function App() {
 
   return (
     <div className="container">
-      <Navigation 
-        currentFilter={filterBy}
-        onFilterChange={setFilterBy}
-        onSortChange={setSortBy}
-        onSearch={setSearchQuery}
-        onAdd={handleAddClick}
-        onLogout={logout}
-      />
+      <ErrorBoundary>
+        <Navigation 
+            currentFilter={filterBy}
+            onFilterChange={setFilterBy}
+            onSortChange={setSortBy}
+            onSearch={setSearchQuery}
+            onAdd={handleAddClick}
+            onLogout={logout}
+        />
 
-      <main style={{ paddingLeft: '60px' }}>
         <CaptureBar
-          storage={storage}
-          onSave={() => {
-            queryClient.invalidateQueries({ queryKey: ['items'] });
-          }}
+            ref={captureRef}
+            storage={storage}
+            onSave={() => {
+                queryClient.invalidateQueries({ queryKey: ['items'] });
+            }}
         />
 
-        <Feed 
-            storage={storage} 
-            filterBy={filterBy}
-            sortBy={sortBy}
-            searchQuery={searchQuery}
-        />
-      </main>
+        <main style={{ paddingTop: 'var(--space-md)' }}>
+            <Feed 
+                storage={storage} 
+                filterBy={filterBy}
+                sortBy={sortBy}
+                searchQuery={searchQuery}
+            />
+        </main>
+      </ErrorBoundary>
     </div>
   );
 }

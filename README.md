@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# Mnemosyne
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A magical personal archive for references, memories, curiosities and wonders. Inspired by Aby Warburg's Mnemosyne Atlas.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Invisible Interface** — Content-first design where UI elements appear only when needed
+- **Universal Capture** — Double-click anywhere to add notes, drop images to save them, paste links
+- **Smart Search** — Search by content, tags, or type (`image`, `note`, `link`)
+- **GitHub Storage** — All data stored in a private GitHub repository you control
+- **Offline-First** — Local caching for instant access
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
 
-## Expanding the ESLint configuration
+- Node.js 18+
+- A GitHub account
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Installation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Setup
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. Create a GitHub OAuth App at [github.com/settings/developers](https://github.com/settings/developers)
+2. Set the callback URL to your app's URL
+3. Add your Client ID to the environment
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The app will automatically create a private `mnemosyne-db` repository in your GitHub account to store your data.
+
+## Usage
+
+| Action | How |
+|--------|-----|
+| Add a note | Double-click anywhere |
+| Add an image | Drag & drop onto the page |
+| Add a link | Paste a URL |
+| Edit | Double-click on any card |
+| Delete | Hover card → click the dot → click again to confirm |
+| Search | Hover the dot at the bottom |
+| Filter by type | Search `image`, `note`, or `link` |
+
+## Tech Stack
+
+- React + TypeScript
+- Vite
+- TanStack Query
+- GitHub API (Octokit)
+- CSS (no frameworks)
+
+## Architecture
+
 ```
+src/
+├── components/     # UI components
+├── contexts/       # Auth context
+├── services/       # GitHub & storage services
+├── types/          # TypeScript definitions
+└── index.css       # All styles
+```
+
+Data is stored as individual JSON files in your GitHub repository:
+```
+mnemosyne-db/
+├── data/           # Item JSON files
+└── assets/         # Uploaded images
+```
+
+## License
+
+MIT License — see [LICENSE](LICENSE)

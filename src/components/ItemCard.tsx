@@ -1,13 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { 
-    Star, 
-    Pin, 
-    Archive, 
-    Trash2, 
-    ExternalLink,
-    MoreHorizontal
-} from 'lucide-react';
 import type { Item } from '../types';
 import { StorageService } from '../services/storage';
 
@@ -25,12 +17,19 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
     const [editTitle, setEditTitle] = useState(item.title || '');
     const [editDescription, setEditDescription] = useState(item.description || '');
     const [editTags, setEditTags] = useState<string>(item.tags?.join(', ') || '');
+    const [isDeleting, setIsDeleting] = useState(false);
     
     const [clickCount, setClickCount] = useState(0);
-    const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Load image URL
+    useEffect(() => {
+        if (item.type === 'image' && item.image) {
+            storage.getAssetUrl(item.image).then(setImageUrl).catch(console.error);
+        }
+    }, [item.image, item.type, storage]);
 
     const handleCardClick = (e: React.MouseEvent) => {
-        // Ignore clicks on buttons/links
         if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('button')) return;
 
         setClickCount(prev => prev + 1);
@@ -55,97 +54,104 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
         };
     }, []);
 
+    const handleSave = async () => {
+        const updatedItem: Item = {
+            ...item,
+            content: editContent,
+            title: editTitle || undefined,
+            description: editDescription || undefined,
+            tags: editTags ? editTags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        };
+        
+        try {
+            await storage.updateItem(updatedItem);
+            onUpdate(updatedItem);
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Failed to save item:', error);
+        }
+    };
+
+    const deleteItem = async () => {
+        if (!isDeleting) {
+            setIsDeleting(true);
+            return;
+        }
+        
+        try {
+            await storage.deleteItem(item.id);
+            onDelete(item);
+        } catch (error) {
+            console.error('Failed to delete item:', error);
+            setIsDeleting(false);
+        }
+    };
+
     if (isEditing) {
         return (
             <>
-                {/* Backdrop */}
                 <div 
-                    style={{
-                        position: 'fixed',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(255,255,255,0.9)',
-                        backdropFilter: 'blur(5px)',
-                        zIndex: 9998,
-                        animation: 'fadeIn 0.2s ease-out'
-                    }}
+                    className="capture-backdrop"
                     onClick={() => setIsEditing(false)}
                 />
                 
-                {/* Centered Edit Modal */}
-                <div 
-                    className="grid-item card-swiss" 
-                    style={{ 
-                        position: 'fixed',
-                        top: '50%', left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: '90%',
-                        maxWidth: '600px',
-                        background: 'transparent',
-                        padding: '0',
-                        border: 'none',
-                        zIndex: 9999,
-                        boxShadow: 'none'
-                    }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        {item.type === 'link' && (
-                            <input 
-                                className="input-swiss" 
-                                style={{ fontSize: '1.5rem', fontWeight: 500, textAlign: 'center' }}
-                                value={editTitle} 
-                                onChange={e => setEditTitle(e.target.value)} 
-                                placeholder="Title"
-                                autoFocus
-                            />
-                        )}
-                        
-                        <textarea 
-                            className="input-swiss" 
-                            style={{ 
-                                fontSize: item.type === 'image' ? '1rem' : '1.5rem', 
-                                borderBottom: '1px solid transparent', 
-                                resize: 'none', 
-                                minHeight: '150px',
-                                background: 'transparent',
-                                textAlign: 'center',
-                                lineHeight: 1.4
+                <div className="capture-overlay">
+                    {item.type === 'image' && imageUrl && (
+                        <img 
+                            src={imageUrl} 
+                            alt={item.content}
+                            style={{
+                                width: '100%',
+                                maxHeight: '200px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                                marginBottom: '8px'
                             }}
-                            value={editContent} 
-                            onChange={e => setEditContent(e.target.value)}
-                            placeholder="Content"
-                            autoFocus={item.type !== 'link'}
                         />
-
-                        <textarea
-                            className="input-swiss"
-                            style={{ 
-                                fontSize: '1rem', 
-                                borderBottom: '1px solid transparent',
-                                color: '#999',
-                                textAlign: 'center',
-                                minHeight: '60px'
-                            }}
-                            value={editDescription}
-                            onChange={e => setEditDescription(e.target.value)}
-                            placeholder="Add a note..."
+                    )}
+                    
+                    {item.type === 'link' && (
+                        <input 
+                            className="capture-input" 
+                            value={editTitle} 
+                            onChange={e => setEditTitle(e.target.value)} 
+                            placeholder="Title"
+                            autoFocus
                         />
+                    )}
+                    
+                    <textarea 
+                        className="capture-input"
+                        style={{ 
+                            fontSize: item.type === 'image' ? '1rem' : '1.25rem',
+                            resize: 'none', 
+                            minHeight: item.type === 'image' ? '40px' : '80px',
+                        }}
+                        value={editContent} 
+                        onChange={e => setEditContent(e.target.value)}
+                        placeholder={item.type === 'image' ? 'Caption' : 'Content'}
+                        autoFocus={item.type !== 'link'}
+                    />
 
-                        <input
-                            className="input-swiss"
-                            style={{ 
-                                fontSize: '0.9rem', 
-                                textAlign: 'center',
-                                color: '#999'
-                            }}
-                            value={editTags}
-                            onChange={e => setEditTags(e.target.value)}
-                            placeholder="Tags (comma separated)"
-                        />
+                    <textarea
+                        className="capture-description"
+                        style={{ minHeight: '40px' }}
+                        value={editDescription}
+                        onChange={e => setEditDescription(e.target.value)}
+                        placeholder="Add a note..."
+                    />
 
-                        <div style={{ display: 'flex', gap: '16px', marginTop: '32px', justifyContent: 'center' }}>
-                            <button className="btn outline" onClick={handleSave}>SAVE</button>
-                            <button className="btn text" onClick={() => setIsEditing(false)} style={{ color: '#999' }}>CANCEL</button>
-                        </div>
+                    <input
+                        className="capture-tag-input"
+                        style={{ width: '100%' }}
+                        value={editTags}
+                        onChange={e => setEditTags(e.target.value)}
+                        placeholder="Tags (comma separated)"
+                    />
+
+                    <div className="capture-actions">
+                        <button className="btn text" onClick={() => setIsEditing(false)}>Cancel</button>
+                        <button className="btn outline" onClick={handleSave}>Save</button>
                     </div>
                 </div>
             </>
@@ -154,7 +160,8 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
 
     return (
         <div 
-            className={`grid-item card-swiss type-${item.type} ${item.archived ? 'opacity-50' : ''}`}
+            className={`grid-item type-${item.type} ${item.archived ? 'opacity-50' : ''}`}
+            onClick={handleCardClick}
         >
             {item.type === 'image' && imageUrl && (
                 <div className="card-image-container">
@@ -162,56 +169,62 @@ export function ItemCard({ item, storage, onUpdate, onDelete }: ItemCardProps) {
                 </div>
             )}
 
-            <div style={{ padding: item.type === 'image' ? '12px 0 0 0' : '0' }}>
-                
+            <div className="card-content">
                 {item.type === 'link' && (
-                    <div className="type-link" style={{ border: 'none', padding: '0' }}>
-                        <h3 className="card-title" style={{ margin: 0 }}>
-                            <a href={item.content} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', fontSize: '1.1rem', fontWeight: 500 }}>
-                                {item.title || item.content} <div className="magic-cue cue-connect" style={{ display: 'inline-block', width: '10px', height: '10px', marginLeft: '4px', verticalAlign: 'top' }}><span /></div>
-                            </a>
-                        </h3>
-                        <div style={{ fontSize: '0.8rem', color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '4px' }}>
-                            {item.content}
+                    <>
+                        <a href={item.content} target="_blank" rel="noopener noreferrer">
+                            {item.title || item.content}
+                        </a>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-faint)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {new URL(item.content).hostname}
                         </div>
-                    </div>
+                    </>
                 )}
 
-                {item.content && item.type !== 'link' && (
-                    <div className="card-content">
-                        {item.type === 'image' ? (
-                            <div className="image-caption" style={{ fontSize: '0.8rem', color: '#999', marginTop: '8px' }}>{item.content}</div>
-                        ) : (
-                            <div className="note-content">{item.content}</div>
-                        )}
-                    </div>
+                {item.type === 'note' && (
+                    <div className="note-content">{item.content}</div>
+                )}
+
+                {item.type === 'image' && item.content && (
+                    <div className="image-caption">{item.content}</div>
                 )}
 
                 {item.description && (
-                    <div className="card-description" style={{ marginTop: '12px', fontSize: '0.85rem', color: '#999' }}>
+                    <div className="card-description">
                         {item.description}
                     </div>
                 )}
 
-                <div className="card-footer">
-                    {/* Date only visible on hover via CSS */}
-                    <span className="card-date">
-                        {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                    </span>
-                    
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {item.pinned && <div className="mini-cue mini-cue-pin" style={{ background: 'currentColor', width: '6px', height: '6px' }} />}
-                        {item.starred && <div className="mini-cue mini-cue-star" style={{ boxShadow: '0 0 5px currentColor' }} />}
+                {item.tags && item.tags.length > 0 && (
+                    <div className="card-tags" style={{ marginTop: '8px' }}>
+                        {item.tags.map(tag => (
+                            <span key={tag} className="tag">{tag}</span>
+                        ))}
                     </div>
+                )}
+
+                <div className="card-footer">
+                    <span className="card-date">
+                        {(() => {
+                            try {
+                                return formatDistanceToNow(new Date(item.createdAt), { addSuffix: true });
+                            } catch {
+                                return '';
+                            }
+                        })()}
+                    </span>
+                    <span className="card-type">{item.type}</span>
                 </div>
             </div>
 
-            <div className="card-actions-hover" ref={actionsRef}>
-                <button className="mini-cue mini-cue-edit" onClick={() => setIsEditing(true)} title="Edit" />
-                <button className="mini-cue mini-cue-pin" onClick={togglePin} title="Pin" style={{ background: item.pinned ? 'currentColor' : 'transparent' }} />
-                <button className="mini-cue mini-cue-star" onClick={toggleStar} title="Star" style={{ boxShadow: item.starred ? '0 0 5px currentColor' : 'none' }} />
-                <button className="mini-cue mini-cue-archive" onClick={toggleArchive} title="Archive" />
-                <button className="mini-cue mini-cue-delete" onClick={deleteItem} title="Delete" />
+            <div className="card-actions-hover">
+                <button 
+                    className={`mini-cue mini-cue-delete`} 
+                    onClick={deleteItem} 
+                    onMouseLeave={() => setIsDeleting(false)}
+                    title={isDeleting ? "Click again to confirm" : "Delete"} 
+                    style={isDeleting ? { background: '#e53935', borderColor: '#e53935', transform: 'scale(2)', opacity: 1 } : {}}
+                />
             </div>
         </div>
     );

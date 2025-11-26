@@ -45,18 +45,28 @@ export class StorageService {
         cache.set(updatedItem);
     }
 
-    async deleteItem(item: Item): Promise<void> {
-        const path = this.filePathMap.get(item.id) || this.getFilePath(item);
-        await this.github.deleteFile(path, `Delete ${item.type}: ${item.title || item.id}`);
+    async deleteItem(itemOrId: Item | string): Promise<void> {
+        const id = typeof itemOrId === 'string' ? itemOrId : itemOrId.id;
+        const item = typeof itemOrId === 'string' ? null : itemOrId;
+        
+        const path = this.filePathMap.get(id);
+        if (!path) {
+            console.error(`[Storage] No file path found for item ${id}`);
+            // Still remove from cache
+            cache.delete(id);
+            return;
+        }
+        
+        await this.github.deleteFile(path, `Delete item: ${id}`);
         
         // Remove from cache
-        cache.delete(item.id);
-        this.filePathMap.delete(item.id);
+        cache.delete(id);
+        this.filePathMap.delete(id);
         
         // If it has an image, try to delete that too
-        if (item.image) {
+        if (item?.image) {
             try {
-                await this.github.deleteFile(item.image, `Delete asset for ${item.id}`);
+                await this.github.deleteFile(item.image, `Delete asset for ${id}`);
             } catch {
                 // Asset deletion is best effort
             }
@@ -161,6 +171,26 @@ export class StorageService {
 
     async getAsset(path: string): Promise<string | null> {
         return await this.github.getFileRaw(path);
+    }
+
+    async getAssetUrl(path: string): Promise<string | null> {
+        // Return a data URL for the image
+        const raw = await this.github.getFileRaw(path);
+        if (raw) {
+            // Determine mime type from extension
+            const ext = path.split('.').pop()?.toLowerCase();
+            const mimeTypes: Record<string, string> = {
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'png': 'image/png',
+                'gif': 'image/gif',
+                'webp': 'image/webp',
+                'svg': 'image/svg+xml'
+            };
+            const mimeType = mimeTypes[ext || ''] || 'image/png';
+            return `data:${mimeType};base64,${raw}`;
+        }
+        return null;
     }
 
     // Optimistic update helpers
