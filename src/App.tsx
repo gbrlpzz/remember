@@ -48,8 +48,9 @@ function App() {
   // Global Event Handlers
   useEffect(() => {
       const handleGlobalDrop = (e: DragEvent) => {
-          e.preventDefault();
+          // Only handle file drops, not internal card reordering
           if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+              e.preventDefault();
               const file = e.dataTransfer.files[0];
               if (file.type.startsWith('image/')) {
                   captureRef.current?.addFile(file);
@@ -58,7 +59,10 @@ function App() {
       };
 
       const handleGlobalDragOver = (e: DragEvent) => {
-          e.preventDefault();
+          // Only prevent default for file drags
+          if (e.dataTransfer?.types.includes('Files')) {
+              e.preventDefault();
+          }
       };
 
       const handleGlobalDoubleClick = (e: MouseEvent) => {

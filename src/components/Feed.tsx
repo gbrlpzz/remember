@@ -1,5 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { 
+    startOfDay, 
+    startOfWeek, 
+    startOfMonth, 
+    startOfYear,
+    subDays, 
+    subWeeks, 
+    subMonths,
+    isWithinInterval,
+    parseISO
+} from 'date-fns';
 import { StorageService } from '../services/storage';
 import { ItemCard } from './ItemCard';
 import type { Item, SortOption, FilterOption } from '../types';
@@ -11,16 +22,88 @@ interface FeedProps {
     searchQuery?: string;
 }
 
+// Parse natural language date queries
+function parseDateQuery(query: string): { start: Date; end: Date } | null {
+    const now = new Date();
+    const today = startOfDay(now);
+    const q = query.toLowerCase().trim();
+
+    if (q === 'today') {
+        return { start: today, end: now };
+    }
+    if (q === 'yesterday') {
+        const yesterday = subDays(today, 1);
+        return { start: yesterday, end: today };
+    }
+    if (q === 'this week' || q === 'week') {
+        return { start: startOfWeek(now), end: now };
+    }
+    if (q === 'last week') {
+        const lastWeekStart = startOfWeek(subWeeks(now, 1));
+        const lastWeekEnd = startOfWeek(now);
+        return { start: lastWeekStart, end: lastWeekEnd };
+    }
+    if (q === 'recent' || q === 'recently' || q === 'a few days ago' || q === 'few days ago') {
+        return { start: subDays(now, 3), end: now };
+    }
+    if (q === 'a week ago' || q === 'week ago') {
+        return { start: subDays(now, 10), end: subDays(now, 4) };
+    }
+    if (q === 'a few weeks ago' || q === 'few weeks ago' || q === 'weeks ago') {
+        return { start: subWeeks(now, 4), end: subWeeks(now, 1) };
+    }
+    if (q === 'this month' || q === 'month') {
+        return { start: startOfMonth(now), end: now };
+    }
+    if (q === 'last month') {
+        const lastMonthStart = startOfMonth(subMonths(now, 1));
+        const lastMonthEnd = startOfMonth(now);
+        return { start: lastMonthStart, end: lastMonthEnd };
+    }
+    if (q === 'a few months ago' || q === 'few months ago' || q === 'months ago') {
+        return { start: subMonths(now, 6), end: subMonths(now, 1) };
+    }
+    if (q === 'this year' || q === 'year') {
+        return { start: startOfYear(now), end: now };
+    }
+    if (q === 'last year') {
+        const lastYearStart = startOfYear(subMonths(now, 12));
+        const lastYearEnd = startOfYear(now);
+        return { start: lastYearStart, end: lastYearEnd };
+    }
+
+    const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    const shortMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    
+    let monthIndex = months.indexOf(q);
+    if (monthIndex === -1) monthIndex = shortMonths.indexOf(q);
+    
+    if (monthIndex !== -1) {
+        const year = monthIndex <= now.getMonth() ? now.getFullYear() : now.getFullYear() - 1;
+        const monthStart = new Date(year, monthIndex, 1);
+        const monthEnd = new Date(year, monthIndex + 1, 0, 23, 59, 59);
+        return { start: monthStart, end: monthEnd };
+    }
+
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayIndex = days.indexOf(q);
+    if (dayIndex !== -1) {
+        const currentDay = now.getDay();
+        const daysAgo = currentDay >= dayIndex ? currentDay - dayIndex : 7 - (dayIndex - currentDay);
+        const targetDay = subDays(today, daysAgo === 0 ? 7 : daysAgo);
+        return { start: targetDay, end: subDays(targetDay, -1) };
+    }
+
+    return null;
+}
+
 export function Feed({ storage, filterBy = 'all', sortBy = 'date', searchQuery = '' }: FeedProps) {
     const queryClient = useQueryClient();
-    // Local filter state removed in favor of props
-    // const [filterBy, setFilterBy] = useState<FilterOption>('all');
 
     const { data: items, isLoading, error, isFetching } = useQuery({
         queryKey: ['items'],
         queryFn: () => storage.getItems(),
         staleTime: 1000 * 60 * 2,
-        // Only use initialData if we actually have cached items
         initialData: () => {
             const cached = storage.getCachedItems();
             return cached.length > 0 ? cached : undefined;
@@ -31,41 +114,40 @@ export function Feed({ storage, filterBy = 'all', sortBy = 'date', searchQuery =
         if (!items) return [];
         let result = [...items];
 
-        // Search (with type keyword support)
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase().trim();
             
-            // Check for type keywords
             const typeKeywords: Record<string, string> = {
-                'image': 'image',
-                'images': 'image',
-                'photo': 'image',
-                'photos': 'image',
-                'note': 'note',
-                'notes': 'note',
-                'text': 'note',
-                'link': 'link',
-                'links': 'link',
-                'url': 'link',
-                'urls': 'link',
+                'image': 'image', 'images': 'image', 'photo': 'image', 'photos': 'image',
+                'note': 'note', 'notes': 'note', 'text': 'note',
+                'link': 'link', 'links': 'link', 'url': 'link', 'urls': 'link',
             };
             
-            // Check if query is a type keyword
             if (typeKeywords[query]) {
                 result = result.filter(i => i.type === typeKeywords[query]);
             } else {
-                // Regular search across content, title, description, tags, and type
-                result = result.filter(i => 
-                    (i.content && i.content.toLowerCase().includes(query)) ||
-                    (i.title && i.title.toLowerCase().includes(query)) ||
-                    (i.description && i.description.toLowerCase().includes(query)) ||
-                    (i.tags && i.tags.some(t => t.toLowerCase().includes(query))) ||
-                    (i.type && i.type.toLowerCase().includes(query))
-                );
+                const dateRange = parseDateQuery(query);
+                if (dateRange) {
+                    result = result.filter(i => {
+                        try {
+                            const itemDate = parseISO(i.createdAt);
+                            return isWithinInterval(itemDate, { start: dateRange.start, end: dateRange.end });
+                        } catch {
+                            return false;
+                        }
+                    });
+                } else {
+                    result = result.filter(i => 
+                        (i.content && i.content.toLowerCase().includes(query)) ||
+                        (i.title && i.title.toLowerCase().includes(query)) ||
+                        (i.description && i.description.toLowerCase().includes(query)) ||
+                        (i.tags && i.tags.some(t => t.toLowerCase().includes(query))) ||
+                        (i.type && i.type.toLowerCase().includes(query))
+                    );
+                }
             }
         }
 
-        // Filter
         switch (filterBy) {
             case 'notes': result = result.filter(i => i.type === 'note'); break;
             case 'links': result = result.filter(i => i.type === 'link'); break;
@@ -75,22 +157,18 @@ export function Feed({ storage, filterBy = 'all', sortBy = 'date', searchQuery =
             default: result = result.filter(i => !i.archived);
         }
 
-        // Sort
         result.sort((a, b) => {
-            // Pinned always first
             if (a.pinned && !b.pinned) return -1;
             if (!a.pinned && b.pinned) return 1;
 
             const dateA = new Date(a.createdAt).getTime();
             const dateB = new Date(b.createdAt).getTime();
 
-            // Then by sort option
             if (sortBy === 'date') {
-                return dateB - dateA; // Newest first
+                return dateB - dateA;
             } else if (sortBy === 'oldest') {
                 return dateA - dateB;
             }
-            // Random or other sorts can be added here
             return 0;
         });
 
@@ -121,12 +199,10 @@ export function Feed({ storage, filterBy = 'all', sortBy = 'date', searchQuery =
 
     return (
         <div>
-            {/* Filters now controlled by Navigation Sidebar */}
-
             <div className="grid-swiss">
                 {filteredItems.map((item) => (
                     <ItemCard 
-                        key={item.id} 
+                        key={item.id}
                         item={item} 
                         storage={storage}
                         onUpdate={handleUpdate}
