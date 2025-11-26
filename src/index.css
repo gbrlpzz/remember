@@ -516,7 +516,205 @@ h1, h2, h3 {
   gap: 6px;
 }
 
-/* Login */
+/* Login Page */
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--color-bg);
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 10vh; /* Optically center content higher */
+}
+
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,0,0,0.02) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 120%, rgba(0,0,0,0.015) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.login-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 320px;
+  padding: var(--space-lg);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.8s var(--ease-out-expo);
+}
+
+.login-content.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+@keyframes loginFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  opacity: 0;
+  animation: loginFadeIn 1s var(--ease-out-expo) 0.6s forwards;
+}
+
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 100px;
+  padding: 8px 20px;
+  width: 240px;
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.login-input-wrapper.focused {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  width: 280px;
+}
+
+.login-pill-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  outline: none;
+  padding: 4px 0;
+  text-align: center;
+}
+
+.login-pill-input::placeholder {
+  color: var(--color-text-faint);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.login-pill-input:focus::placeholder {
+  opacity: 0.3;
+}
+
+.login-pill-enter {
+  position: absolute;
+  left: calc(50% + 135px);
+  top: 22px; /* Optically aligned with input text */
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  padding: 10px;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.login-enter-icon {
+  font-family: var(--font-sans);
+  font-size: 1.2rem;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  transition: all 0.3s ease;
+}
+
+.login-pill-enter:hover .login-enter-icon {
+  opacity: 0.8;
+  transform: translateX(2px);
+}
+
+.login-error {
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  opacity: 0;
+  animation: loginFadeIn 0.3s var(--ease-spring) forwards;
+}
+
+
+.login-help {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  letter-spacing: 0.05em;
+  transition: color 0.3s var(--ease-spring);
+}
+
+.login-help:hover {
+  color: var(--color-text-muted);
+}
+
+/* Decorative corners */
+.login-corner {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.login-corner::before,
+.login-corner::after {
+  content: '';
+  position: absolute;
+  background: var(--color-text);
+}
+
+.login-corner-tl {
+  top: 40px;
+  left: 40px;
+}
+
+.login-corner-tl::before {
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 30px;
+}
+
+.login-corner-tl::after {
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 1px;
+}
+
+.login-corner-br {
+  bottom: 40px;
+  right: 40px;
+}
+
+.login-corner-br::before {
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  height: 30px;
+}
+
+.login-corner-br::after {
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 1px;
+}
+
+/* Legacy support */
 .login-swiss {
   display: flex;
   flex-direction: column;

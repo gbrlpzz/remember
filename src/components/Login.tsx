@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export function Login() {
@@ -6,6 +6,14 @@ export function Login() {
     const [token, setToken] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isFocused, setIsFocused] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        // Staggered entrance animation
+        const timer = setTimeout(() => setIsVisible(true), 100);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -16,55 +24,52 @@ export function Login() {
 
         try {
             await login(token.trim());
-        } catch (err) {
-            setError('Invalid token. Please check and try again.');
+        } catch {
+            setError('The key does not fit.');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="login-swiss">
-            <h1 style={{ marginBottom: '1rem' }}>MNEMOSYNE</h1>
-            <p style={{ fontSize: '1.25rem', color: 'var(--color-text-muted)', marginBottom: '3rem', fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>
-                The Atlas of Memory.
-            </p>
+        <div className="login-page">
+            <div className={`login-content ${isVisible ? 'visible' : ''}`}>
+                <form onSubmit={handleSubmit} className="login-form">
+                    <div className={`login-input-wrapper ${isFocused ? 'focused' : ''} ${token ? 'has-value' : ''}`}>
+                        <input
+                            type="password"
+                            className="login-pill-input"
+                            value={token}
+                            onChange={(e) => setToken(e.target.value)}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                            placeholder={isFocused ? "Access Key" : "Enter..."}
+                            disabled={isLoading}
+                            autoComplete="off"
+                            autoFocus
+                        />
+                    </div>
 
-            <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '400px' }}>
-                <input
-                    type="password"
-                    className="input-swiss"
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="Enter Access Key"
-                    disabled={isLoading}
-                    autoComplete="off"
-                    style={{ textAlign: 'center', fontSize: '1.2rem' }}
-                />
-                
-                {error && (
-                    <p style={{ color: 'var(--color-accent)', marginTop: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>
-                        {error}
-                    </p>
-                )}
+                    {token.trim() && (
+                        <button type="submit" className="login-pill-enter">
+                            <span className="login-enter-icon">↵</span>
+                        </button>
+                    )}
+                    
+                    {error && (
+                        <p className="login-error">{error}</p>
+                    )}
 
-                <div style={{ marginTop: '3rem', textAlign: 'center' }}>
-                    <button type="submit" className="btn" disabled={isLoading || !token.trim()}>
-                        {isLoading ? 'ENTERING...' : 'ENTER ARCHIVE'}
-                    </button>
-                </div>
-            </form>
-
-            <p style={{ marginTop: '4rem', fontSize: '0.875rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                <a 
-                    href="https://github.com/settings/tokens/new?scopes=repo&description=Mnemosyne" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    style={{ borderBottom: '1px solid var(--color-text-muted)' }}
-                >
-                    Generate Key
-                </a>
-            </p>
+                    <a 
+                        href="https://github.com/settings/tokens/new?scopes=repo&description=Mnemosyne" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="login-help"
+                    >
+                        Generate a key
+                    </a>
+                </form>
+            </div>
         </div>
     );
 }
